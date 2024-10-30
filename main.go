@@ -9,7 +9,12 @@ import (
 )
 
 func main() {
-	taskList := tasks.LoadList()
+	taskList, err := tasks.LoadList()
+	if err != nil {
+		fmt.Println("Error loading tasks:", err)
+		return
+	}
+
 	for {
 		menu()
 		input := getUserChoice("Your choice: ")
@@ -18,35 +23,56 @@ func main() {
 		case 1:
 			tasks.DisplayList(taskList)
 		case 2:
-			taskTitle := getUserInput("Task text:")
-			currentIndex := len(taskList)
-			task, _ := tasks.New(currentIndex, taskTitle)
-			taskList[currentIndex] = task
+			addNewTask(&taskList)
 		case 3:
-			tasks.DisplayList(taskList)
-			id := getUserChoice("Task ID to remove")
-			delete(taskList, id-1)
+			removeTask(&taskList)
 		case 4:
-			id := getUserChoice("Task ID to mark as completed")
-			task := taskList[id-1]
-			task.MarkAsCompleted()
+			markTaskAsCompleted(&taskList)
 		case 5:
-			err := tasks.SaveToFile(taskList)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-			fmt.Println("See u soon")
-			return
+			saveAndExit(taskList)
+		default:
+			fmt.Println("Invalid choice, please try again.")
 		}
 	}
 }
 
-func getUserChoice(prompt string) int {
-	var choice int
-	fmt.Printf("%v ", prompt)
-	fmt.Scan(&choice)
-	return choice
+func addNewTask(taskList *[]tasks.Task) {
+	taskTitle := getUserInput("Task text:")
+	task, err := tasks.New(len(*taskList)+1, taskTitle)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	*taskList = append(*taskList, task)
+}
+
+func removeTask(taskList *[]tasks.Task) {
+	tasks.DisplayList(*taskList)
+	id := getUserChoice("Task ID to remove: ")
+	if id < 1 || id > len(*taskList) {
+		fmt.Println("Invalid ID. Task does not exist.")
+		return
+	}
+	*taskList = append((*taskList)[:id-1], (*taskList)[id:]...)
+}
+
+func markTaskAsCompleted(taskList *[]tasks.Task) {
+	id := getUserChoice("Task ID to mark as completed: ")
+	if id < 1 || id > len(*taskList) {
+		fmt.Println("Invalid ID. Task does not exist.")
+		return
+	}
+	(*taskList)[id-1].MarkAsCompleted()
+}
+
+func saveAndExit(taskList []tasks.Task) {
+	err := tasks.SaveToFile(taskList)
+	if err != nil {
+		fmt.Println("Error saving tasks:", err)
+		return
+	}
+	fmt.Println("See you soon")
+	os.Exit(0)
 }
 
 func menu() {
@@ -56,16 +82,22 @@ func menu() {
 	fmt.Println("3. Remove task")
 	fmt.Println("4. Mark as completed")
 	fmt.Println("5. Exit")
+}
 
+func getUserChoice(prompt string) int {
+	var choice int
+	fmt.Printf("%v ", prompt)
+	_, err := fmt.Scan(&choice)
+	if err != nil {
+		fmt.Println("Invalid input. Please enter a number.")
+		return getUserChoice(prompt)
+	}
+	return choice
 }
 
 func getUserInput(prompt string) string {
 	fmt.Printf("%v ", prompt)
 	reader := bufio.NewReader(os.Stdin)
 	text, _ := reader.ReadString('\n')
-
-	text = strings.TrimSuffix(text, "\n")
-	text = strings.TrimSuffix(text, "\r")
-
-	return text
+	return strings.TrimSpace(text)
 }

@@ -30,38 +30,40 @@ func New(id int, title string) (Task, error) {
 	}, nil
 }
 
-func DisplayList(c map[int]Task) {
-	if len(c) == 0 {
+func DisplayList(tasks []Task) {
+	if len(tasks) == 0 {
 		fmt.Println("Empty list")
+		return
 	}
 
-	for key, value := range c {
-		key += 1
-		fmt.Printf("%v) : %v, completed: %t \n", key, value.Title, value.Completed)
+	for i, task := range tasks {
+		fmt.Printf("%v) %v, completed: %t\n", i+1, task.Title, task.Completed)
 	}
 }
 
-func LoadList() map[int]Task {
+func LoadList() ([]Task, error) {
 	content, err := os.ReadFile(fileName)
 	if err != nil {
-		return make(map[int]Task)
+		if errors.Is(err, os.ErrNotExist) {
+			return []Task{}, nil
+		}
+		return nil, err
 	}
 
-	var collection map[int]Task
-	err = json.Unmarshal(content, &collection)
-
+	var tasks []Task
+	err = json.Unmarshal(content, &tasks)
 	if err != nil {
-		return make(map[int]Task)
+		return nil, err
 	}
 
-	return collection
+	return tasks, nil
 }
 
-func SaveToFile(collection map[int]Task) error {
-	list, err := json.Marshal(collection)
+func SaveToFile(tasks []Task) error {
+	content, err := json.MarshalIndent(tasks, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(fileName, list, 0644)
+	return os.WriteFile(fileName, content, 0644)
 }
